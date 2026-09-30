@@ -1,3 +1,4 @@
+import {TestEvidence,TEST_UTTERANCES,type TestUtteranceId} from './test-evidence';
 import { isRecord, ToolCallState, type StagedToolCall, type VoiceEvent } from './voice-protocol';
 export type { VoiceEvent } from './voice-protocol';
 
@@ -33,7 +34,11 @@ export class VoiceClient {
   private tokenSource?:VoiceTokenSource;
   private context?: AudioContext;
   private stream?: MediaStream;
-  private source?: MediaStreamAudioSourceNode;
+  private source?: AudioNode;
+  private testSource?:AudioBufferSourceNode;
+  private inputMode:'microphone'|'synthetic-test'='microphone';
+  private evidence?:TestEvidence;
+  private testSending=false;
   private capture?: AudioWorkletNode;
   private silentSink?: GainNode;
   private scheduled = new Set<AudioBufferSourceNode>();
@@ -62,7 +67,7 @@ export class VoiceClient {
   constructor(private readonly callbacks: VoiceCallbacks) {}
 
   /** Call directly from a user click. Resolves at session.ready, rejects on startup failure. */
-  start(session: Record<string, unknown>, tokenSource?:VoiceTokenSource): Promise<void> {
+  start(session: Record<string, unknown>, tokenSource?:VoiceTokenSource,inputMode:'microphone'|'synthetic-test'='microphone'): Promise<void> {
     if (this.running || this.ending) {tokenSource?.discard();return Promise.reject(new Error('A voice session is already active.'));}
     if (!isRecord(session) || typeof session.system_prompt !== 'string' || !session.system_prompt.trim() || 'agent_id' in session) {
       tokenSource?.discard();return Promise.reject(new Error('Provide an inline session with a system_prompt and no agent_id.'));
@@ -77,6 +82,7 @@ export class VoiceClient {
     try { wireSession = JSON.stringify({ type: 'session.update', session }); }
     catch { tokenSource?.discard();return Promise.reject(new Error('The voice session configuration must be JSON-serializable.')); }
 
+    this.inputMode=inputMode;this.evidence=inputMode==='synthetic-test'?new TestEvidence():undefined;
     this.tokenSource=tokenSource;
     this.running = true;
     this.ready = false;
@@ -94,7 +100,7 @@ export class VoiceClient {
       this.startResolve = resolve;
       this.startReject = reject;
     });
-    this.status('connecting', 'Requesting microphone and connecting…');
+    this.status('connecting', inputMode==='synthetic-test'?'Connecting real AssemblyAI with prerecorded synthetic input; microphone off…':'Requesting microphone and connecting…');
     window.addEventListener('pagehide', this.onPageHide);
     this.connectTimer = setTimeout(() => this.fail('Voice connection timed out. Check your connection and try again.'), CONNECT_TIMEOUT_MS);
     void this.initialize(run, wireSession).catch((error: unknown) => {
@@ -134,7 +140,7 @@ export class VoiceClient {
   }
 
   private async initialize(run: number, wireSession: string): Promise<void> {
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    if (!window.isSecureContext || (this.inputMode==='microphone'&&!navigator.mediaDevices?.getUserMedia)) {
       throw new Error('Microphone access requires HTTPS or localhost in a supported browser.');
     }
     const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -144,7 +150,7 @@ export class VoiceClient {
     if (!context.audioWorklet) throw new Error('This browser does not support microphone AudioWorklets.');
     // Start both permission and audio activation in the original click task.
     const resume = context.resume();
-    const media = navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, channelCount: 1 } })
+    const media = this.inputMode==='synthetic-test'?Promise.resolve(undefined):navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, channelCount: 1 } })
       .then((stream) => {
         if (this.isActive(run)) this.stream = stream;
         else stream.getTracks().forEach((track) => track.stop());
@@ -162,11 +168,11 @@ export class VoiceClient {
     capture.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
       if (this.isActive(run)) this.sendAudio(event.data);
     };
-    this.source = context.createMediaStreamSource(stream);
+    this.source = stream?context.createMediaStreamSource(stream):context.createGain();
     this.silentSink = context.createGain();
     this.silentSink.gain.value = 0;
     this.source.connect(capture).connect(this.silentSink).connect(context.destination);
-    for (const track of stream.getTracks()) {
+    for (const track of stream?.getTracks()||[]) {
       track.addEventListener('ended', () => {
         if (this.isActive(run)) this.fail('Microphone access ended. Please start a new call.');
       });
@@ -220,6 +226,7 @@ export class VoiceClient {
   }
 
   private receive(event: VoiceEvent): void {
+    this.evidence?.provider(event);
     if (event.type === 'session.ended') {
       this.callbacks.onEvent?.(event);
       this.finish();
@@ -248,7 +255,7 @@ export class VoiceClient {
           const remaining = Math.max(0, Math.min(MAX_SESSION_MS, event.expires_at * 1000 - Date.now()));
           this.capTimer = setTimeout(() => { void this.stop('Five-minute session limit reached. Start a new call to continue.'); }, remaining);
         }
-        this.status('listening', 'Microphone is live');
+        this.status('listening', this.inputMode==='synthetic-test'?'Real provider connected. Choose a synthetic utterance below; microphone is off.':'Microphone is live');
         this.startResolve?.();
         this.startResolve = undefined;
         this.startReject = undefined;
@@ -294,6 +301,7 @@ export class VoiceClient {
       isError = true;
       result = JSON.stringify({ error: this.errorMessage(error) });
     }
+    this.evidence?.add('tool.result',{name:call.name,arguments:call.arguments,result:JSON.parse(result),isError});
     if (!this.ending && this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: 'tool.result', call_id: call.callId, result, is_error: isError }));
     }
@@ -317,6 +325,18 @@ export class VoiceClient {
     }
     if (final) this.agentPartials.delete(key);
     this.callbacks.onTranscript({ role, text, final, itemId, replyId, interrupted: event.interrupted === true });
+  }
+
+  recordRulebook(value:unknown):void {this.evidence?.add('rulebook.snapshot',value);}
+  exportTestEvidence():unknown {if(!this.evidence)throw new Error('Evidence export is available only for synthetic-input test sessions.');return this.evidence.export();}
+  async sendTestUtterance(id:TestUtteranceId):Promise<void>{
+    if(this.inputMode!=='synthetic-test'||!this.ready||this.ending||!this.context||!this.source)throw new Error('Start a prerecorded synthetic-input session first.');
+    if(!Object.hasOwn(TEST_UTTERANCES,id)||this.testSending)throw new Error('Wait for the current synthetic utterance to finish.');
+    this.testSending=true;const run=this.run;const context=this.context;
+    try{const response=await fetch(`/test-utterances/${id}.wav`,{signal:this.abort?.signal});if(!response.ok)throw new Error('Sample audio unavailable.');const bytes=await response.arrayBuffer();if(bytes.byteLength>2_000_000)throw new Error('Sample audio too large.');const buffer=await context.decodeAudioData(bytes);if(!this.isActive(run)||!this.ready){this.testSending=false;return;}const source=context.createBufferSource();source.buffer=buffer;source.connect(this.source!);source.connect(context.destination);this.testSource=source;
+      this.evidence?.add('synthetic.input',{id,text:TEST_UTTERANCES[id].text,durationSeconds:buffer.duration});
+      source.onended=()=>{source.disconnect();if(this.testSource===source)this.testSource=undefined;this.testSending=false;};source.start();
+    }catch{this.testSending=false;throw new Error('Could not play the prerecorded utterance. No simulated transcript or edit was applied.');}
   }
 
   private sendAudio(buffer: ArrayBuffer): void {
@@ -382,6 +402,7 @@ export class VoiceClient {
   }
 
   private releaseAudio(): void {
+    if(this.testSource){try{this.testSource.stop();}catch{}this.testSource.disconnect();this.testSource=undefined;}this.testSending=false;
     this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = undefined;
     this.cancelPlayback();
