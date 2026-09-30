@@ -100,3 +100,7 @@ Generated from installed package metadata and the committed lockfile. Dependenci
 | yallist | 3.1.1 | ISC | yes |
 
 DM Sans and IBM Plex Mono are self-hosted, licensed under the SIL Open Font License. Protocol documentation was consulted, not copied as application source. Original code-native artwork and an AI-generated design concept are described in README.md.
+
+## Original synthetic test audio
+
+`public/test-utterances/*.wav` are original generic sample utterances generated locally for this project with the installed FFmpeg `flite` filter, using Flite's `slt` voice. These are explicitly synthetic speech, not a recording of the user or a claimed human speaker. They are input fixtures only; no AssemblyAI replies are bundled. Flite's installed copyright/license notice is preserved in `docs/third-party-licenses/flite-system-copyright.txt`. FFmpeg/Flite executables are not distributed with this application.
