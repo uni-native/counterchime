@@ -1,0 +1,5 @@
+export function Icon({name,size=18}:{name:'mic'|'play'|'stop'|'undo'|'export'|'plus'|'trash'|'chevron'|'check';size?:number}) {
+ const paths={mic:<><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></>,play:<path d="m8 4 13 8-13 8z"/>,stop:<rect x="5" y="5" width="14" height="14"/>,undo:<><path d="M9 4 4 9l5 5M4 9h10a7 7 0 0 1 0 14"/></>,export:<><path d="M12 16V2m-5 5 5-5 5 5M4 13v8h16v-8"/></>,plus:<path d="M12 4v16M4 12h16"/>,trash:<><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7"/></>,chevron:<path d="m6 9 6 6 6-6"/>,check:<path d="m4 12 5 5L20 6"/>};
+ return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+}
+export function Brand(){return <span className="brand"><svg width="29" height="31" viewBox="0 0 29 31" aria-hidden="true"><path d="M3 8v21M13 3v26M23 13v16" stroke="currentColor" strokeWidth="6"/></svg>Counterchime</span>;}
