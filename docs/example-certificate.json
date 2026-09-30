@@ -1,0 +1,171 @@
+{
+  "format": "counterchime-session",
+  "schemaVersion": 1,
+  "exportedAt": "2026-09-30T05:03:25.314Z",
+  "modelRevision": 1,
+  "scenario": {
+    "title": "The timber exchange",
+    "initial": {
+      "wood": 2,
+      "stone": 0,
+      "stars": 0
+    },
+    "rules": [
+      {
+        "id": "trade-1",
+        "name": "Quarry trade",
+        "input": {
+          "wood": 2,
+          "stone": 0,
+          "stars": 0
+        },
+        "output": {
+          "wood": 0,
+          "stone": 1,
+          "stars": 0
+        }
+      },
+      {
+        "id": "trade-2",
+        "name": "Timber trade",
+        "input": {
+          "wood": 0,
+          "stone": 1,
+          "stars": 0
+        },
+        "output": {
+          "wood": 3,
+          "stone": 0,
+          "stars": 0
+        }
+      }
+    ]
+  },
+  "assumptions": [
+    "Unlimited deterministic trades",
+    "Nonnegative integer resources",
+    "No random outcomes, cooldowns, storage caps, or turn costs"
+  ],
+  "evidence": {
+    "revision": 1,
+    "scenario": {
+      "title": "The timber exchange",
+      "initial": {
+        "wood": 2,
+        "stone": 0,
+        "stars": 0
+      },
+      "rules": [
+        {
+          "id": "trade-1",
+          "name": "Quarry trade",
+          "input": {
+            "wood": 2,
+            "stone": 0,
+            "stars": 0
+          },
+          "output": {
+            "wood": 0,
+            "stone": 1,
+            "stars": 0
+          }
+        },
+        {
+          "id": "trade-2",
+          "name": "Timber trade",
+          "input": {
+            "wood": 0,
+            "stone": 1,
+            "stars": 0
+          },
+          "output": {
+            "wood": 3,
+            "stone": 0,
+            "stars": 0
+          }
+        }
+      ]
+    },
+    "result": {
+      "status": "found",
+      "explored": 3,
+      "limits": {
+        "maxDepth": 8,
+        "maxStates": 10000,
+        "resourceCap": 30
+      },
+      "hitLimits": [],
+      "steps": [
+        {
+          "ruleId": "trade-1",
+          "before": {
+            "wood": 2,
+            "stone": 0,
+            "stars": 0
+          },
+          "after": {
+            "wood": 0,
+            "stone": 1,
+            "stars": 0
+          }
+        },
+        {
+          "ruleId": "trade-2",
+          "before": {
+            "wood": 0,
+            "stone": 1,
+            "stars": 0
+          },
+          "after": {
+            "wood": 3,
+            "stone": 0,
+            "stars": 0
+          }
+        }
+      ],
+      "cycleStart": 0,
+      "gain": {
+        "wood": 1,
+        "stone": 0,
+        "stars": 0
+      }
+    },
+    "elapsedMs": 0.8684360000000027,
+    "verified": true,
+    "current": true,
+    "warning": null,
+    "prefix": [],
+    "loop": [
+      {
+        "ruleId": "trade-1",
+        "before": {
+          "wood": 2,
+          "stone": 0,
+          "stars": 0
+        },
+        "after": {
+          "wood": 0,
+          "stone": 1,
+          "stars": 0
+        }
+      },
+      {
+        "ruleId": "trade-2",
+        "before": {
+          "wood": 0,
+          "stone": 1,
+          "stars": 0
+        },
+        "after": {
+          "wood": 3,
+          "stone": 0,
+          "stars": 0
+        }
+      }
+    ],
+    "loopRuleIds": [
+      "trade-1",
+      "trade-2"
+    ]
+  }
+}
