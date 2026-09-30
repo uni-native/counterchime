@@ -74,7 +74,7 @@ See `.env.example` and [security notes](docs/security.md). An owner must approve
 
 Local development requires all of: `ENABLE_LIVE_VOICE=true`, a server-only `ASSEMBLYAI_API_KEY`, `VOICE_ACCESS_MODE=local-only`, an explicitly approved `VOICE_MAX_SESSIONS` (1–2), and an exact `ALLOWED_ORIGIN`. Start with `node --env-file=.env --import tsx server/dev.ts` after the owner configures the file. Local session limits are process-lifetime limits and reset when the owner restarts the server.
 
-Hosted live voice is fail-closed: it requires Sites dispatch authentication, an explicit identity allowlist, a durable D1 session-budget table, an exact origin, and the owner-approved session limit. The counter is atomic and global and does not reset on deployment. Failed token requests consume a slot conservatively. Do not expose the Worker directly outside Sites with `sites-protected` mode; forwarded identity headers are trusted only behind the platform dispatcher. Stored-key voice remains owner-only. A separately gated visitor-supplied session-key mode is implemented but is disabled on the hosted demo pending explicit approval; it never accesses the stored owner key.
+Hosted live voice is fail-closed: it requires Sites dispatch authentication, an explicit identity allowlist, a durable D1 session-budget table, an exact origin, and the owner-approved session limit. The counter is atomic and global and does not reset on deployment. Failed token requests consume a slot conservatively. Do not expose the Worker directly outside Sites with `sites-protected` mode; forwarded identity headers are trusted only behind the platform dispatcher. Stored-key voice remains owner-only. A separately gated visitor-supplied session-key mode is implemented but is enabled on the hosted demo for at most two five-minute sessions; it never accesses the stored owner key.
 
 ## Privacy and data flow
 
@@ -120,7 +120,7 @@ Bounded search can miss longer or unexplored histories. Spoken instructions may 
 
 Counterchime's application logic, checker, tests, UI, prompt, and token artwork were created for this project with OpenAI AI coding assistance. No competitor code or game rules were copied. AssemblyAI's public documentation informed protocol integration; their starter source was not copied. The UI concept was generated with OpenAI Image Gen; runtime token glyphs and brand artwork are original inline SVG.
 
-The source license is MIT (see `LICENSE`). Third-party dependencies retain their own licenses, including SIL Open Font License fonts. See `THIRD_PARTY_NOTICES.md` and `docs/dependency-inventory.json`. Source publication was approved by the project owner. Event submission is pending review of the completed demonstration video.
+The source license is MIT (see `LICENSE`). Third-party dependencies retain their own licenses, including SIL Open Font License fonts. See `THIRD_PARTY_NOTICES.md` and `docs/dependency-inventory.json`. Source publication was approved by the project owner. Event submission remains in preparation; live AssemblyAI behavior has not yet been verified.
 
 ## Official protocol references
 
