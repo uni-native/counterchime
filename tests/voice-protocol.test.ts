@@ -206,6 +206,7 @@ class FakeContext {
   constructor() { FakeContext.instances.push(this); }
   async resume(): Promise<void> { this.state = 'running'; }
   async close(): Promise<void> { this.state = 'closed'; }
+  async decodeAudioData(_bytes:ArrayBuffer){return {duration:2};}
   createMediaStreamSource(): FakeNode { return new FakeNode(); }
   createGain(): FakeNode & { gain: { value: number } } { return Object.assign(new FakeNode(), { gain: { value: 0 } }); }
   createBuffer(_channels: number, length: number, rate: number) {
@@ -397,4 +398,13 @@ test('synthetic transport: one-session source bypasses stored-key endpoint and i
  const harness=browserHarness();let discarded=0;const source={getToken:async()=> 'synthetic-token',discard(){discarded++;}};
  const client=new VoiceClient({onStatus(){},onTranscript(){},onTool(){}});
  try{const starting=client.start({system_prompt:'Synthetic offline only.'},source);await flushSyntheticTasks();const ws=FakeSocket.instances[0];assert.ok(ws);ws.open();ws.message({type:'session.ready'});await starting;assert.equal(harness.fetchCount(),0);assert.ok(discarded>0);const stopping=client.stop();ws.message({type:'session.ended'});await stopping;}finally{await client.stop();harness.restore();}
+});
+test('synthetic-input mode never requests microphone and records only received evidence',async()=>{
+ const harness=browserHarness();const client=new VoiceClient({onStatus(){},onTranscript(){},onTool(){return {actual:true};}});const source={getToken:async()=> 'synthetic-temporary-token',discard(){}};
+ try{const started=client.start({system_prompt:'Offline test.'},source,'synthetic-test');await flushSyntheticTasks();const ws=FakeSocket.instances[0];assert.ok(ws);assert.equal(harness.constraints(),undefined);assert.equal(harness.fetchCount(),0);await assert.rejects(client.sendTestUtterance('test'),/Start/);ws.open();ws.message({type:'session.ready',resume_token:'secret-resume'});await started;ws.message({type:'transcript.agent',text:'Actual mocked provider reply'});client.recordRulebook({revision:1});const evidence=JSON.stringify(client.exportTestEvidence());assert.ok(evidence.includes('Actual mocked provider reply'));assert.ok(!evidence.includes('secret-resume'));const stopping=client.stop();ws.message({type:'session.ended'});await stopping;await assert.rejects(client.sendTestUtterance('test'),/Start/);}finally{await client.stop();harness.restore();}
+});
+
+test('synthetic sample button sends audio through capture and never directly invokes a tool',async()=>{
+ const harness=browserHarness();let tools=0;const client=new VoiceClient({onStatus(){},onTranscript(){},onTool(){tools++;}});
+ try{const start=client.start({system_prompt:'Offline test.'},{getToken:async()=> 'synthetic-token',discard(){}},'synthetic-test');await flushSyntheticTasks();const ws=FakeSocket.instances[0];ws.open();ws.message({type:'session.ready'});await start;globalThis.fetch=async input=>{assert.equal(input,'/test-utterances/test.wav');return new Response(new Uint8Array([1,2]));};await client.sendTestUtterance('test');assert.equal(tools,0);assert.equal(FakeContext.instances[0].sources.length,1);await assert.rejects(client.sendTestUtterance('repair'),/Wait/);FakeCapture.instances[0].port.onmessage?.({data:new ArrayBuffer(960)});assert.equal(ws.sent.filter(e=>e.type==='input.audio').length,1);const stopped=client.stop();assert.equal(FakeContext.instances[0].sources[0].stopped,true);ws.message({type:'session.ended'});await stopped;}finally{await client.stop();harness.restore();}
 });
