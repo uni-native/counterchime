@@ -48,3 +48,9 @@ Use one continuous recording for the real sequence; keep UI and audio synchroniz
 - Remaining public-site responsive/export browser QA
 - Real AssemblyAI microphone-to-tool-to-audio validation, including correction and interruption
 - Public repository, genuine demo video review, and verified final event submission (coordinated separately)
+
+## Prerecorded synthetic input option
+
+Choose **Prerecorded synthetic test voice** before personally submitting the key. No microphone is requested in this mode. Select the existing Three-way arbitrage economy, then use the four visible utterance buttons one at a time, waiting for actual agent responses. Local Flite-generated audio is streamed in real time through the same AssemblyAI connection and tool pipeline. No sample text is sent as a tool command or inserted as a recognized transcript.
+
+**Export actual test evidence** downloads client-memory JSON containing timestamped real provider transcript/audio events, actual tool results and rulebook snapshots, and disclosed synthetic-input IDs/text. It omits API keys, temporary tokens, resume tokens, and raw session configuration. Received audio is PCM16 little-endian mono24kHz in base64 chunks. It may include interrupted/unplayed output: preserve event timestamps and interruption records when editing a video, rather than blindly concatenating every chunk. This export is evidence data, not a finished screen recording. It is bounded at24MB/10,000events and labels truncation. Nothing is uploaded or persisted server-side. Export before leaving or starting another session.
